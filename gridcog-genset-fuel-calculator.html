@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gridcog Genset Fuel Calculator</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: #fafaf7;
+    color: #1a1a1a;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 24px 20px 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 20px; }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #e5e5e0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .controls label { display: block; font-size: 12px; color: #555; margin-bottom: 4px; font-weight: 500; }
+  .controls select, .controls input {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid #d4d4cf;
+    border-radius: 5px;
+    background: #fff;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .controls .price-row { display: flex; gap: 6px; align-items: center; }
+  .controls .price-row input { flex: 1; }
+  .controls .unit { font-size: 12px; color: #666; min-width: 38px; }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 640px) {
+    .controls, .grid2 { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e0;
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .card h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px dashed #ececec;
+    font-size: 13px;
+    gap: 12px;
+  }
+  .row:last-child { border-bottom: none; }
+  .row .k { color: #555; flex: 0 0 auto; }
+  .row .v { font-weight: 500; color: #111; font-variant-numeric: tabular-nums; text-align: right; }
+  .row.highlight .v { color: #b8430b; }
+  .row.stack { flex-direction: column; gap: 2px; }
+  .row.stack .v { text-align: left; font-weight: 400; color: #333; font-size: 12.5px; }
+  .row.stack .k { color: #555; font-weight: 500; }
+
+  .curve {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11.5px;
+  }
+  .curve span {
+    background: #f0efea;
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: #444;
+  }
+  .curve span b { color: #111; font-weight: 600; }
+
+  .calc {
+    background: #fff;
+    border: 1px solid #e5e5e0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .calc h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+  .calc-step {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: #333;
+    padding: 7px 0;
+    border-bottom: 1px dashed #ececec;
+  }
+  .calc-step:last-child { border-bottom: none; }
+  .calc-step .label {
+    color: #444;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 11.5px;
+    display: block;
+    margin-bottom: 3px;
+    font-weight: 600;
+  }
+  .basis-lhv { background: #e2efe1; color: #275824; }
+  .basis-hhv { background: #fde7d0; color: #804608; }
+  .basis-mixed { background: #ebe1f5; color: #5e3893; }
+
+  .notes {
+    background: #fffbe9;
+    border: 1px solid #f0e2a6;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    color: #5a4a10;
+  }
+  .notes strong { color: #3d3208; }
+  .notes ul { margin: 6px 0 0; padding-left: 18px; }
+  .notes li { margin: 3px 0; }
+
+  .badge {
+    display: inline-block;
+    padding: 1px 7px;
+    font-size: 11px;
+    border-radius: 10px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .badge-green { background: #e3f1de; color: #2d6020; }
+  .badge-grey { background: #ececec; color: #555; }
+  .basis-tag {
+    display: inline-block;
+    padding: 0 6px;
+    font-size: 10.5px;
+    border-radius: 8px;
+    margin-left: 6px;
+    vertical-align: middle;
+    font-weight: 500;
+  }
+
+  footer { margin-top: 24px; font-size: 11px; color: #999; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Gridcog Genset Fuel Calculator</h1>
+  <div class="sub">Pick a fuel type to see fuel properties, asset parameter recommendations and the derived Gridcog running-cost inputs, with all calculations exposed. All efficiency values and fuel rates are reported on <strong>LHV (lower heating value)</strong> basis to match engine-manufacturer convention. Override the fuel price to recalculate live.</div>
+
+  <div class="controls">
+    <div>
+      <label for="fuel">Fuel type</label>
+      <select id="fuel"></select>
+    </div>
+    <div>
+      <label for="price">Fuel price (override)</label>
+      <div class="price-row">
+        <input id="price" type="number" step="0.01" min="0">
+        <span class="unit" id="price-unit"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Fuel properties</h2>
+      <div class="row"><span class="k">Energy density (LHV)</span><span class="v" id="lhv">—</span></div>
+      <div class="row"><span class="k">Fuel price</span><span class="v" id="fuel-price">—</span></div>
+      <div class="row"><span class="k">Emissions factor</span><span class="v" id="ef">—</span></div>
+      <div class="row"><span class="k">Renewable / certificates</span><span class="v" id="cert-elig">—</span></div>
+    </div>
+    <div class="card">
+      <h2>Genset Running Costs</h2>
+      <div class="row"><span class="k">Fuel Cost (Energy Input)</span><span class="v" id="fuel-rate">—</span></div>
+      <div class="row"><span class="k">Electricity Cost (Energy Output)</span><span class="v" id="energy-rate">—</span></div>
+      <div class="row"><span class="k">Hourly Running Cost</span><span class="v" id="rr">—</span></div>
+      <div class="row"><span class="k"><code>emissions_intensity</code> (t/MWh)</span><span class="v" id="ei">—</span></div>
+      <div class="row"><span class="k"><code>certificate_pct</code></span><span class="v" id="cert">—</span></div>
+      <div class="row highlight"><span class="k"><strong>Marginal cost of generation</strong></span><span class="v" id="mc">—</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 16px;">
+    <h2>Asset Parameters</h2>
+    <div class="row stack"><span class="k">Flat Heat Rate <span style="color:#888;font-weight:400;">(maps to <code>flat_efficiency</code>)</span></span><span class="v" id="flat-hr">—</span></div>
+    <div class="row stack"><span class="k">Heat Rate Curve Suggested <span style="color:#888;font-weight:400;">(maps to <code>efficiency_changes</code>)</span></span><span class="v" id="hr-curve">—</span></div>
+    <div class="row stack"><span class="k">Ramp Up <span style="color:#888;font-weight:400;">(<code>ramp_up_pct_per_min</code>)</span></span><span class="v" id="ramp-up">—</span></div>
+    <div class="row stack"><span class="k">Ramp Down <span style="color:#888;font-weight:400;">(<code>ramp_down_pct_per_min</code>)</span></span><span class="v" id="ramp-down">—</span></div>
+    <div class="row stack"><span class="k">Max kWh per week <span style="color:#888;font-weight:400;">(<code>max_kwh_per_week</code>)</span></span><span class="v" id="max-week">—</span></div>
+    <div class="row stack"><span class="k">Minimum Operating Load <span style="color:#888;font-weight:400;">(<code>min_kw</code>)</span></span><span class="v" id="min-load">—</span></div>
+    <div class="row stack"><span class="k">Must Run <span style="color:#888;font-weight:400;">(<code>must_run_kw</code>)</span></span><span class="v" id="must-run">—</span></div>
+  </div>
+
+  <div class="calc">
+    <h2>Calculations</h2>
+    <div id="calcs"></div>
+  </div>
+
+  <div class="notes" id="notes">—</div>
+
+  <footer>Screening-grade defaults — replace fuel prices, efficiencies and running rates with project-specific data before publishing scenario results.</footer>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------------
+   Reference values are starting points for screening studies in Gridcog.
+   All efficiencies and fuel rates are on LHV basis (lower heating value) to
+   match engine manufacturer convention. Where market prices are quoted on a
+   different basis (e.g. natural gas in $/GJ HHV in Australia) the LHV/HHV
+   ratio is applied explicitly in the chain shown under "Calculations".
+--------------------------------------------------------------------------- */
+const FUELS = {
+  diesel: {
+    label: "Diesel (reciprocating)",
+    pricing: { value: 1.80, unit: "$/L", basis: "LHV" },
+    physical: { type: "liquid", hhv_per_kg: 45.5, lhv_per_kg: 42.5, density: 0.832, density_unit: "kg/L", composition: "C12-ish hydrocarbons" },
+    co2: { value: 2.68, unit: "kgCO2e/L" },
+    efficiency: 0.36, runningRate: 10, certPct: 0, certLabel: "Not eligible",
+    heatRateCurve: { 25: 0.27, 50: 0.33, 75: 0.36, 100: 0.36 },
+    rampUp: "null (≈100%/min — diesel ramps to full output in &lt;1 min)",
+    rampDown: "null (rarely binds at 30-min resolution)",
+    maxKwhPerWeek: "null (set if on-site tank or delivery cadence binds)",
+    minLoad: "30% of rating (≈300 kW on a 1 MW unit) — avoid wet stacking",
+    mustRun: "null (start/stop on demand)",
+    notes: [
+      "Modern prime-rated diesel sits at 0.34–0.40 LHV efficiency at typical load; older or part-loaded units drop sharply, so prefer the heat-rate curve over <code>flat_efficiency</code> if low-load running matters.",
+      "Setting <code>min_kw</code> forces the optimiser into mixed-integer mode — only switch on if dispatch frequency makes it material."
+    ]
+  },
+  natgas_recip: {
+    label: "Natural gas (reciprocating engine)",
+    pricing: { value: 15.0, unit: "$/GJ", basis: "HHV" },
+    physical: { type: "energy", hhv_per_kg: 55.5, lhv_per_kg: 50.0, composition: "Methane (CH4)" },
+    co2: { value: 0.0511, unit: "tCO2e/GJ HHV" },
+    efficiency: 0.40, runningRate: 7, certPct: 0, certLabel: "Not eligible (fossil)",
+    heatRateCurve: { 25: 0.30, 50: 0.37, 75: 0.40, 100: 0.40 },
+    rampUp: "null (50–80%/min if curve modelled — fast for recip)",
+    rampDown: "null",
+    maxKwhPerWeek: "null (continuous pipeline supply assumed)",
+    minLoad: "30–40% of rating",
+    mustRun: "null",
+    notes: [
+      "Australian gas markets quote $/GJ on <strong>HHV basis</strong>; engine efficiencies are LHV. The LHV/HHV ratio (≈0.901 for methane) is applied in the calculations to keep fuel cost and efficiency on the same basis.",
+      "Cogen configurations recover heat separately — that benefit isn't represented in this asset."
+    ]
+  },
+  natgas_ccgt: {
+    label: "Natural gas (combined-cycle turbine)",
+    pricing: { value: 15.0, unit: "$/GJ", basis: "HHV" },
+    physical: { type: "energy", hhv_per_kg: 55.5, lhv_per_kg: 50.0, composition: "Methane (CH4)" },
+    co2: { value: 0.0511, unit: "tCO2e/GJ HHV" },
+    efficiency: 0.55, runningRate: 12, certPct: 0, certLabel: "Not eligible (fossil)",
+    heatRateCurve: { 50: 0.45, 75: 0.52, 100: 0.55 },
+    rampUp: "5–10%/min (steam-cycle warm-up)",
+    rampDown: "5–10%/min",
+    maxKwhPerWeek: "null",
+    minLoad: "40–50% of rating (steam-side stability)",
+    mustRun: "Common at min load when bid baseload — set <code>must_run_kw</code> to ~50% of capacity for that case",
+    notes: [
+      "CCGT is typically utility-scale (>100 MW); confirm asset sizing before applying.",
+      "Open-cycle (OCGT) sits at 0.30–0.35 efficiency with much faster ramp — drop <code>flat_efficiency</code>, raise ramp limits, recompute.",
+      "AU gas convention is $/GJ HHV — LHV/HHV ratio is applied in the chain below."
+    ]
+  },
+  lpg: {
+    label: "LPG / Propane",
+    pricing: { value: 1.20, unit: "$/L", basis: "LHV" },
+    physical: { type: "liquid", hhv_per_kg: 50.4, lhv_per_kg: 46.4, density: 0.510, density_unit: "kg/L", composition: "Propane (C3H8)" },
+    co2: { value: 1.51, unit: "kgCO2e/L" },
+    efficiency: 0.32, runningRate: 9, certPct: 0, certLabel: "Not eligible",
+    heatRateCurve: { 25: 0.22, 50: 0.28, 75: 0.31, 100: 0.32 },
+    rampUp: "null (≈100%/min)",
+    rampDown: "null",
+    maxKwhPerWeek: "Set from on-site tank capacity × LHV × efficiency (LPG is delivered, not piped)",
+    minLoad: "25–30% of rating",
+    mustRun: "null",
+    notes: [
+      "LPG is common for small standby gensets where natural gas isn't reticulated.",
+      "Fuel logistics (delivery cadence, tank size) often dominate — capture via <code>max_kwh_per_week</code>."
+    ]
+  },
+  biodiesel: {
+    label: "Biodiesel (B100)",
+    pricing: { value: 2.00, unit: "$/L", basis: "LHV" },
+    physical: { type: "liquid", hhv_per_kg: 40.0, lhv_per_kg: 37.2, density: 0.880, density_unit: "kg/L", composition: "Fatty-acid methyl esters (FAME)" },
+    co2: { value: 0.18, unit: "kgCO2e/L" },
+    efficiency: 0.34, runningRate: 11, certPct: 0, certLabel: "Scheme-dependent (set 1.0 if accredited)",
+    heatRateCurve: { 25: 0.23, 50: 0.30, 75: 0.33, 100: 0.34 },
+    rampUp: "null", rampDown: "null",
+    maxKwhPerWeek: "Set from on-site fuel storage and delivery cadence",
+    minLoad: "30% of rating", mustRun: "null",
+    notes: [
+      "Lifecycle emissions vary widely: waste-oil B100 is typically <10% of fossil diesel; virgin-crop biodiesel can approach fossil levels with land-use change.",
+      "If the scenario claims renewable certificates, set <code>certificate_pct</code> to the eligible fraction."
+    ]
+  },
+  h2_fc_green: {
+    label: "Hydrogen — fuel cell (green)",
+    pricing: { value: 6.00, unit: "$/kg", basis: "LHV" },
+    physical: { type: "mass", hhv_per_kg: 142.0, lhv_per_kg: 120.0, composition: "H2 (LHV/HHV gap ≈15%, the largest of any common fuel)" },
+    co2: { value: 0, unit: "kgCO2e/kg" },
+    efficiency: 0.55, runningRate: 20, certPct: 1.0, certLabel: "Fully eligible (set 1.0)",
+    heatRateCurve: { 25: 0.55, 50: 0.60, 75: 0.55, 100: 0.50 },
+    rampUp: "10–20%/min (avoid rapid cycling — accelerates stack degradation)",
+    rampDown: "10–20%/min",
+    maxKwhPerWeek: "Set from H2 storage (kg) × 33.33 × efficiency per refill cycle",
+    minLoad: "10–20% of rating (auxiliaries, water management)",
+    mustRun: "null",
+    notes: [
+      "Fuel cells peak at part-load (30–60%) and degrade at full power — the opposite of a diesel curve. Use <code>efficiency_changes</code> if dispatch sits at extremes.",
+      "H2 has the largest LHV/HHV gap of any common fuel (~15%) — the basis matters more than for any other fuel here. Cross-check vendor efficiency claims for which basis they're on.",
+      "Stack degradation per operating hour is real money — represent it in the hourly running cost."
+    ]
+  },
+  h2_ice_green: {
+    label: "Hydrogen — ICE (green)",
+    pricing: { value: 6.00, unit: "$/kg", basis: "LHV" },
+    physical: { type: "mass", hhv_per_kg: 142.0, lhv_per_kg: 120.0, composition: "H2" },
+    co2: { value: 0, unit: "kgCO2e/kg" },
+    efficiency: 0.36, runningRate: 12, certPct: 1.0, certLabel: "Fully eligible (set 1.0)",
+    heatRateCurve: { 25: 0.25, 50: 0.32, 75: 0.36, 100: 0.36 },
+    rampUp: "null (≈100%/min — behaves like a diesel)",
+    rampDown: "null",
+    maxKwhPerWeek: "Set from H2 storage capacity",
+    minLoad: "30% of rating", mustRun: "null",
+    notes: [
+      "From a model perspective the H2 ICE behaves like a diesel — the differences are upstream (fuel cost, certificates, emissions).",
+      "Combustion produces trace NOx but no CO2; lifecycle CO2 sits with H2 production."
+    ]
+  },
+  h2_fc_grey: {
+    label: "Hydrogen — fuel cell (grey, SMR)",
+    pricing: { value: 2.00, unit: "$/kg", basis: "LHV" },
+    physical: { type: "mass", hhv_per_kg: 142.0, lhv_per_kg: 120.0, composition: "H2 (steam-methane reformed)" },
+    co2: { value: 10.0, unit: "kgCO2e/kg" },
+    efficiency: 0.55, runningRate: 20, certPct: 0, certLabel: "Not eligible (fossil-derived)",
+    heatRateCurve: { 25: 0.55, 50: 0.60, 75: 0.55, 100: 0.50 },
+    rampUp: "10–20%/min", rampDown: "10–20%/min",
+    maxKwhPerWeek: "null (assume pipeline / merchant H2 supply)",
+    minLoad: "10–20% of rating", mustRun: "null",
+    notes: [
+      "Grey H2 lifecycle emissions are ~9–11 kgCO2e/kg — similar per MWh to natural gas after accounting for fuel-cell efficiency.",
+      "Do not claim renewable certificates."
+    ]
+  },
+  biogas: {
+    label: "Biogas (anaerobic digestion / landfill)",
+    pricing: { value: 5.0, unit: "$/GJ", basis: "LHV" },
+    physical: { type: "energy", hhv_per_kg: 22.0, lhv_per_kg: 20.0, composition: "~60% CH4 / 40% CO2 mix; HHV ~22 MJ/m³, LHV ~20 MJ/m³" },
+    co2: { value: 0, unit: "kgCO2e/GJ LHV" },
+    efficiency: 0.38, runningRate: 8, certPct: 1.0, certLabel: "Typically eligible",
+    heatRateCurve: { 25: 0.28, 50: 0.35, 75: 0.38, 100: 0.38 },
+    rampUp: "null (50%/min if curve modelled)",
+    rampDown: "null",
+    maxKwhPerWeek: "Set from digester gas yield — often the binding constraint",
+    minLoad: "30–40% of rating",
+    mustRun: "Common — gas is produced continuously and is flared if unused. Set <code>must_run_kw</code> to match steady-state gas yield.",
+    notes: [
+      "Biogas is often near-free on-site (waste-to-energy) — set fuel rate to a low value or zero if appropriate.",
+      "Biogenic CO2 is typically counted as zero under most schemes; confirm against the scheme that applies.",
+      "CH4 content varies — recompute LHV from gas composition if accuracy matters. Default here assumes pricing on LHV basis."
+    ]
+  },
+  hfo: {
+    label: "Heavy fuel oil (HFO / bunker)",
+    pricing: { value: 0.70, unit: "$/L", basis: "LHV" },
+    physical: { type: "liquid", hhv_per_kg: 42.5, lhv_per_kg: 40.0, density: 0.985, density_unit: "kg/L", composition: "Residual fuel oil" },
+    co2: { value: 3.15, unit: "kgCO2e/L" },
+    efficiency: 0.42, runningRate: 9, certPct: 0, certLabel: "Not eligible",
+    heatRateCurve: { 50: 0.36, 75: 0.40, 100: 0.42 },
+    rampUp: "20–30%/min (large medium-speed units)",
+    rampDown: "20–30%/min",
+    maxKwhPerWeek: "null (large bunkered storage typical)",
+    minLoad: "30–40% of rating (combustion stability, fuel temperature)",
+    mustRun: "null",
+    notes: [
+      "Used in large medium-speed diesels (typically &gt;5 MW) — confirm asset size before applying.",
+      "SOx and PM emissions are not represented by this model — capture in side analysis if reporting is in scope."
+    ]
+  },
+  petrol: {
+    label: "Petrol / gasoline (small backup)",
+    pricing: { value: 2.00, unit: "$/L", basis: "LHV" },
+    physical: { type: "liquid", hhv_per_kg: 47.0, lhv_per_kg: 44.0, density: 0.745, density_unit: "kg/L", composition: "Octane-grade hydrocarbons" },
+    co2: { value: 2.31, unit: "kgCO2e/L" },
+    efficiency: 0.27, runningRate: 6, certPct: 0, certLabel: "Not eligible",
+    heatRateCurve: { 25: 0.18, 50: 0.24, 75: 0.27, 100: 0.27 },
+    rampUp: "null (≈100%/min)", rampDown: "null",
+    maxKwhPerWeek: "Set from on-site fuel storage (small tanks typical)",
+    minLoad: "25% of rating", mustRun: "null (pure standby use)",
+    notes: [
+      "Typical of small portable / standby gensets (&lt;50 kW). Efficiency is poor; rarely used for prime power.",
+      "Marginal cost is high — these assets normally only dispatch for unserved-load support."
+    ]
+  }
+};
+
+/* ---------------- helpers ---------------- */
+const fmt = (n, d=3) => Number.isFinite(n) ? n.toLocaleString("en-AU", { maximumFractionDigits: d, minimumFractionDigits: 0 }) : "—";
+const fmt2 = n => fmt(n, 2);
+
+/* Compute LHV per pricing-unit (matching the price denominator) and return
+   the value plus the chain of working that produced it. Always reports on
+   LHV basis. For HHV-priced fuels (natgas) the LHV/HHV ratio is applied. */
+function computeLhvPerPricedUnit(f) {
+  const denom = f.pricing.unit.split("/")[1];
+  const basis = f.pricing.basis;
+  const p = f.physical;
+  const ratio = p.lhv_per_kg / p.hhv_per_kg;
+
+  if (denom === "L") {
+    const lhv_MJ_per_L = p.lhv_per_kg * p.density;
+    const lhv_kWh_per_L = lhv_MJ_per_L / 3.6;
+    return {
+      value: lhv_kWh_per_L, unit: "kWh/L", priceUnit: "L",
+      steps: [
+        `Composition: ${p.composition}`,
+        `HHV ${p.hhv_per_kg} MJ/kg, <strong>LHV ${p.lhv_per_kg} MJ/kg</strong> (LHV/HHV ratio = ${ratio.toFixed(3)})`,
+        `Density: ${p.density} ${p.density_unit}`,
+        `LHV per L = ${p.lhv_per_kg} MJ/kg × ${p.density} kg/L = ${lhv_MJ_per_L.toFixed(2)} MJ/L`,
+        `÷ 3.6 MJ/kWh → <strong>${lhv_kWh_per_L.toFixed(3)} kWh/L (LHV)</strong>`
+      ]
+    };
+  }
+  if (denom === "kg") {
+    const lhv_kWh_per_kg = p.lhv_per_kg / 3.6;
+    return {
+      value: lhv_kWh_per_kg, unit: "kWh/kg", priceUnit: "kg",
+      steps: [
+        `Composition: ${p.composition}`,
+        `HHV ${p.hhv_per_kg} MJ/kg, <strong>LHV ${p.lhv_per_kg} MJ/kg</strong> (LHV/HHV ratio = ${ratio.toFixed(3)})`,
+        `÷ 3.6 MJ/kWh → <strong>${lhv_kWh_per_kg.toFixed(3)} kWh/kg (LHV)</strong>`
+      ]
+    };
+  }
+  if (denom === "GJ") {
+    if (basis === "HHV") {
+      const kWh_per_priced_GJ = 277.778 * ratio;
+      return {
+        value: kWh_per_priced_GJ, unit: "kWh LHV per GJ HHV bought", priceUnit: "GJ HHV",
+        steps: [
+          `Composition: ${p.composition}`,
+          `HHV ${p.hhv_per_kg} MJ/kg, LHV ${p.lhv_per_kg} MJ/kg (LHV/HHV ratio = ${ratio.toFixed(3)})`,
+          `Price quoted $/GJ on HHV basis (Australian convention for natural gas)`,
+          `1 GJ HHV bought × ${ratio.toFixed(3)} = ${ratio.toFixed(3)} GJ LHV of usable energy`,
+          `× 277.78 kWh/GJ → <strong>${kWh_per_priced_GJ.toFixed(2)} kWh LHV per GJ HHV paid</strong>`
+        ]
+      };
+    } else {
+      return {
+        value: 277.778, unit: "kWh/GJ LHV", priceUnit: "GJ LHV",
+        steps: [
+          `Composition: ${p.composition}`,
+          `Price quoted $/GJ on LHV basis — no LHV/HHV conversion needed`,
+          `<strong>1 GJ LHV = 277.78 kWh LHV</strong>`
+        ]
+      };
+    }
+  }
+}
+
+function basisTag(text) {
+  let cls = "basis-mixed";
+  if (text === "LHV") cls = "basis-lhv";
+  else if (text === "HHV") cls = "basis-hhv";
+  return `<span class="basis basis-tag ${cls}">${text} basis</span>`;
+}
+
+function renderHeatRateCurve(curve) {
+  return Object.entries(curve)
+    .map(([load, eff]) => `<span>${load}%: <b>${eff.toFixed(2)}</b></span>`)
+    .join("");
+}
+
+const sel = document.getElementById("fuel");
+Object.entries(FUELS).forEach(([k, v]) => {
+  const opt = document.createElement("option");
+  opt.value = k; opt.textContent = v.label;
+  sel.appendChild(opt);
+});
+sel.value = "diesel";
+
+const priceEl = document.getElementById("price");
+const priceUnitEl = document.getElementById("price-unit");
+
+function render() {
+  const f = FUELS[sel.value];
+  priceEl.value = priceEl.dataset.fuelKey === sel.value ? priceEl.value : f.pricing.value;
+  priceEl.dataset.fuelKey = sel.value;
+  priceUnitEl.textContent = f.pricing.unit;
+
+  const priceVal = parseFloat(priceEl.value);
+  const usePrice = Number.isFinite(priceVal) && priceVal >= 0 ? priceVal : f.pricing.value;
+
+  const lhv = computeLhvPerPricedUnit(f);
+  const fuelRate = usePrice / lhv.value;
+  const marginalCost = fuelRate / f.efficiency * 1000;
+  const heatRate = 1 / f.efficiency;
+
+  let eiRow = "—", eiSteps = [];
+  if (f.co2.value === 0) {
+    eiRow = "0";
+    eiSteps = [`Combustion-free / biogenic — emissions intensity = 0`];
+  } else {
+    const co2u = f.co2.unit;
+    let kg_per_unit = f.co2.value, prepStep = null;
+    if (co2u.toLowerCase().includes("tco2e/gj")) {
+      kg_per_unit = f.co2.value * 1000;
+      prepStep = `${f.co2.value} ${co2u} × 1000 kg/t = ${kg_per_unit.toFixed(2)} kgCO2e/GJ HHV`;
+    }
+    const kg_per_kWh_fuel = kg_per_unit / lhv.value;
+    const t_per_MWh_elec = kg_per_kWh_fuel / f.efficiency;
+    eiRow = fmt(t_per_MWh_elec, 3);
+    eiSteps = [
+      prepStep,
+      `${prepStep ? kg_per_unit.toFixed(2) + ' kgCO2e/' + lhv.priceUnit : f.co2.value + ' ' + co2u} ÷ ${lhv.value.toFixed(3)} ${lhv.unit} = <strong>${kg_per_kWh_fuel.toFixed(3)} kgCO2e/kWh fuel (LHV)</strong>`,
+      `÷ ${f.efficiency} efficiency (LHV) = ${t_per_MWh_elec.toFixed(3)} kgCO2e/kWh elec = <strong>${t_per_MWh_elec.toFixed(3)} tCO2e/MWh elec</strong>`
+    ].filter(Boolean);
+  }
+
+  document.getElementById("lhv").innerHTML =
+    `${fmt(lhv.value, 3)} ${lhv.unit} ${basisTag("LHV")}`;
+  document.getElementById("fuel-price").innerHTML =
+    `${fmt2(usePrice)} ${f.pricing.unit} ${basisTag(f.pricing.basis)}`;
+  document.getElementById("ef").textContent = `${f.co2.value} ${f.co2.unit}`;
+  document.getElementById("cert-elig").innerHTML = f.certPct > 0
+    ? `${f.certLabel} <span class="badge badge-green">${f.certPct.toFixed(2)}</span>`
+    : `${f.certLabel} <span class="badge badge-grey">0</span>`;
+
+  document.getElementById("fuel-rate").innerHTML = `$${fmt(fuelRate, 4)}/kWh ${basisTag("LHV")}`;
+  document.getElementById("energy-rate").textContent = `$0.000/kWh elec (typical — captured via fuel + efficiency)`;
+  document.getElementById("rr").textContent = `$${f.runningRate.toFixed(0)}/hr (illustrative)`;
+  document.getElementById("ei").textContent = eiRow;
+  document.getElementById("cert").textContent = f.certPct.toFixed(2);
+  document.getElementById("mc").textContent = `$${fmt(marginalCost, 0)}/MWh`;
+
+  document.getElementById("flat-hr").innerHTML =
+    `<code>flat_efficiency</code> = ${f.efficiency.toFixed(2)} ${basisTag("LHV")} &nbsp;·&nbsp; equivalent heat rate ≈ ${fmt(heatRate,2)} kWh fuel / kWh elec (${fmt(heatRate*3.6,2)} MJ/kWh)`;
+  document.getElementById("hr-curve").innerHTML =
+    `<div class="curve">${renderHeatRateCurve(f.heatRateCurve)}</div>`;
+  document.getElementById("ramp-up").innerHTML = f.rampUp;
+  document.getElementById("ramp-down").innerHTML = f.rampDown;
+  document.getElementById("max-week").innerHTML = f.maxKwhPerWeek;
+  document.getElementById("min-load").innerHTML = f.minLoad;
+  document.getElementById("must-run").innerHTML = f.mustRun;
+
+  const calcs = document.getElementById("calcs");
+  calcs.innerHTML = "";
+  const steps = [
+    {
+      label: `Step 1 — Fuel energy density (the physical chain)`,
+      basis: "LHV",
+      lines: lhv.steps
+    },
+    {
+      label: `Step 2 — Fuel Cost (Energy Input)`,
+      basis: "LHV",
+      lines: [
+        `$${fmt2(usePrice)} ${f.pricing.unit} ÷ ${fmt(lhv.value, 3)} ${lhv.unit} = <strong>$${fmt(fuelRate, 4)}/kWh fuel (LHV)</strong>`
+      ]
+    },
+    {
+      label: `Step 3 — Flat Heat Rate`,
+      basis: "LHV",
+      lines: [
+        `flat_efficiency = ${f.efficiency.toFixed(2)} (LHV — engine-manufacturer convention)`,
+        `Heat rate = 1 ÷ ${f.efficiency} = <strong>${fmt(heatRate, 3)} kWh fuel / kWh elec</strong> (${fmt(heatRate * 3.6, 2)} MJ/kWh)`
+      ]
+    },
+    {
+      label: `Step 4 — Marginal cost of generation`,
+      basis: "LHV",
+      lines: [
+        `$${fmt(fuelRate, 4)}/kWh fuel ÷ ${f.efficiency} efficiency × 1000 = <strong>$${fmt(marginalCost, 0)}/MWh</strong>`,
+        `(Fuel rate and efficiency must share a basis — both LHV here, so no correction needed.)`
+      ]
+    },
+    {
+      label: `Step 5 — emissions_intensity`,
+      basis: f.co2.value === 0 ? "n/a" : "LHV",
+      lines: eiSteps
+    }
+  ];
+  steps.forEach(s => {
+    const div = document.createElement("div");
+    div.className = "calc-step";
+    const basisCls = s.basis === "LHV" ? "basis-lhv" : s.basis === "HHV" ? "basis-hhv" : "basis-mixed";
+    const basisHtml = s.basis === "n/a" ? "" : `<span class="basis-tag ${basisCls}">${s.basis} basis</span>`;
+    div.innerHTML = `<span class="label">${s.label}${basisHtml}</span>${s.lines.map(l => `<div>${l}</div>`).join("")}`;
+    calcs.appendChild(div);
+  });
+
+  const notesEl = document.getElementById("notes");
+  notesEl.innerHTML = `<strong>Notes &amp; caveats for ${f.label}</strong><ul>${f.notes.map(n=>`<li>${n}</li>`).join("")}</ul>`;
+}
+
+sel.addEventListener("change", render);
+priceEl.addEventListener("input", render);
+render();
+</script>
+</body>
+</html>
